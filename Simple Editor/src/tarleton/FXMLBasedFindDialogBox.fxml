@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<GridPane fx:id="window" layoutX="0.0" layoutY="0.0" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="65.00009999999747" prefWidth="442.0" xmlns:fx="http://javafx.com/fxml" fx:controller="tarleton.FXMLBasedFindDialogBoxController">
+  <children>
+    <HBox prefHeight="59.0" prefWidth="313.0" spacing="10.0" GridPane.columnIndex="0" GridPane.columnSpan="2" GridPane.hgrow="ALWAYS" GridPane.rowIndex="0" GridPane.vgrow="ALWAYS">
+      <children>
+        <Label maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="true" text="Fi_nd What:" />
+        <TextField id="findText" fx:id="findTextField" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="22.0" prefWidth="272.0" />
+      </children>
+    </HBox>
+    <Button fx:id="findNextButton" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="true" onAction="#findNextAction" text="_Find Next" GridPane.columnIndex="2" GridPane.rowIndex="0" />
+    <Button maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="true" onAction="#cancelAction" text="_Cancel" GridPane.columnIndex="2" GridPane.columnSpan="1" GridPane.rowIndex="1" GridPane.rowSpan="1" />
+    <Label maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" text="Direction" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+    <CheckBox fx:id="caseCheckBox" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="true" text="Match _case" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+    <HBox prefHeight="100.0" prefWidth="200.0" spacing="20.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+      <children>
+        <RadioButton fx:id="upDirectionRadioButton" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="_Up">
+          <toggleGroup>
+            <ToggleGroup fx:id="toggleGroup" />
+          </toggleGroup>
+        </RadioButton>
+        <RadioButton fx:id="downDirectionRadioButton" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" selected="true" text="_Down" toggleGroup="$toggleGroup" />
+      </children>
+    </HBox>
+  </children>
+  <columnConstraints>
+    <ColumnConstraints hgrow="SOMETIMES" maxWidth="166.0" minWidth="10.0" prefWidth="147.0" />
+    <ColumnConstraints hgrow="SOMETIMES" maxWidth="232.0" minWidth="10.0" prefWidth="208.0" />
+    <ColumnConstraints hgrow="SOMETIMES" maxWidth="153.0" minWidth="10.0" prefWidth="67.0" />
+  </columnConstraints>
+  <rowConstraints>
+    <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+    <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+    <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+  </rowConstraints>
+</GridPane>

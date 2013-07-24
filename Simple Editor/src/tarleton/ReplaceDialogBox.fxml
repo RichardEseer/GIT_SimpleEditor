@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane id="AnchorPane" prefHeight="120.0" prefWidth="440.0" xmlns:fx="http://javafx.com/fxml" fx:controller="tarleton.ReplaceDialogBoxController">
+  <children>
+    <GridPane hgap="10.0" layoutX="0.0" layoutY="0.0" prefHeight="120.0" prefWidth="440.0" vgap="5.0">
+      <children>
+        <Button fx:id="findNextButton" mnemonicParsing="false" onAction="#findNextAction" prefHeight="30.0" prefWidth="100.0" text="Find Next" GridPane.columnIndex="4" GridPane.rowIndex="0" />
+        <Button fx:id="replaceButton" mnemonicParsing="false" onAction="#replaceAction" prefHeight="30.0" prefWidth="100.0" text="Replace" GridPane.columnIndex="4" GridPane.rowIndex="1" />
+        <Button fx:id="replaceAllButton" mnemonicParsing="false" onAction="#replaceAllAction" prefHeight="30.0" prefWidth="100.0" text="Replace All" GridPane.columnIndex="4" GridPane.rowIndex="2" />
+        <Button fx:id="cancelButton" mnemonicParsing="false" onAction="#cancelAction" prefHeight="30.0" prefWidth="100.0" text="Cancel" GridPane.columnIndex="4" GridPane.rowIndex="3" />
+        <Label text="Find what:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+        <Label text="Replace with:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+        <TextField fx:id="findWhatTextField" prefHeight="30.0" prefWidth="112.0" GridPane.columnIndex="1" GridPane.columnSpan="3" GridPane.rowIndex="0" />
+        <TextField fx:id="replaceWithTextField" prefHeight="30.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.columnSpan="3" GridPane.rowIndex="1" />
+        <CheckBox fx:id="matchCaseCheckBox" mnemonicParsing="false" prefWidth="157.0" text="Match case" GridPane.columnIndex="0" GridPane.columnSpan="2" GridPane.rowIndex="3" />
+      </children>
+      <columnConstraints>
+        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+      </columnConstraints>
+      <padding>
+        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+      </padding>
+      <rowConstraints>
+        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+      </rowConstraints>
+    </GridPane>
+  </children>
+</AnchorPane>

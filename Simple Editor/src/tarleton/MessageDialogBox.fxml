@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<AnchorPane id="AnchorPane" minHeight="113.9609375" prefHeight="113.9609375" prefWidth="365.0" xmlns:fx="http://javafx.com/fxml" fx:controller="tarleton.MessageDialogBoxController">
+  <children>
+    <Button fx:id="OKButton" defaultButton="true" layoutX="211.0" layoutY="74.0" mnemonicParsing="false" onAction="#okButtonHandler" prefHeight="27.0" prefWidth="140.0" text="OK" textAlignment="CENTER" />
+    <Label fx:id="messageLabel" layoutX="21.0" layoutY="14.0" prefHeight="44.0" prefWidth="330.0" text="">
+      <font>
+        <Font size="18.0" />
+      </font>
+    </Label>
+    <ImageView fx:id="image" fitHeight="80.74999976676442" fitWidth="107.66666412353516" layoutX="21.0" layoutY="7.0" pickOnBounds="true" preserveRatio="true" />
+  </children>
+</AnchorPane>
