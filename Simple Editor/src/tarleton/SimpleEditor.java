@@ -27,6 +27,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
+import javafx.fxml.Initializable;
 import javafx.fxml.JavaFXBuilderFactory;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -46,10 +47,12 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import tarleton.ExitDialogBox.ReturnValue;
 import static tarleton.ExitDialogBox.ReturnValue.Cancel;
 import static tarleton.ExitDialogBox.ReturnValue.DontSave;
@@ -60,28 +63,78 @@ import static tarleton.ExitDialogBox.ReturnValue.Save;
 public class SimpleEditor extends Application
         implements Printable {
 
-    String applicationTitle = "SimpleEditor";
-    private File initialDirectory = 
+    // Application variables
+    private final String applicationTitle = "SimpleEditor";
+    private File initialDirectory =
             new File("C:\\Tarleton\\CS330\\Simple Editor");
     private File currentFile = null;
-    private boolean textModified = false;
+    private int initialApplicationWidth = 600;
+    private int initialApplicationHeight = 400;
+    private Initializable appCtrl;
+    // 
+    Stage primaryStage;
+    private FXMLBasedFindDialogBoxController findDialogBoxController;
+    private static final Logger logger = Logger.getLogger(SimpleEditor.class.getName());
     private final TextArea text = new TextArea();
-    private String currentFontFamily = "Courier";
-    private int currentFontSize = 12;
-    private String currentFontWeight = "normal";
+    // Used to determine if the text has been modified
+    // The intent is to avoid creating large strings
+    private long originalTextHashValue;
+    private boolean mnemonicsEnabled = true;
+    // Font variables
+    // The standard variables are ...
+    // The default variables are for the sustem default font
+    // The current variables are for the current font in use
+    // To use a custom font see:
+    // http://thierrywasyl.wordpress.com/2013/01/27/set-custom-font-in-javafx-2/
+    // Controls whether the standard font or the system default font is used
+    private boolean useStandardFont = true;
+    private final String standardFontFamily = "Courier";
+    private final double standardFontSize = 12;
+    private final String standardFontWeight = "normal";
+    // Current font values in use
+    private String currentFontFamily = standardFontFamily;
+    private double currentFontSize = standardFontSize;
+    private String currentFontWeight = standardFontWeight;
+    // System default fonts
+    private String defaultFontFamily = standardFontFamily;
+    private double defaultFontSize = standardFontSize;
+    private String defaultFontWeight = standardFontWeight;
+    // Font color variables
     private String textFillColor = "black";
     private String textBackgroundColor = "white";
+    // Statusbar variables
     private int cursorCount;
     private int currentLineCount;
     private int currentColumnCount;
     private Label fileNameLabel;
+    private final String fileText = "File: ";
     private Label lineNumberLabel;
     private Label columnNumberLabel;
-    private String lineNumberText = "Line: ";
-    private String columnNumberText = "Column: ";
-    Stage primaryStage;
-    private FXMLBasedFindDialogBoxController findDialogBoxController;
+    private final String lineNumberText = "Line: ";
+    private final String columnNumberText = "Column: ";
 
+    private String replaceDialogBoxTitle = "Replace";
+    private String findDialogBoxTitle = "Find";
+    // Potential properties
+    // application title
+    // application initial width
+    // application initial height
+    // application default directory
+    // standard font
+    // text color and background
+    //
+    // Use regular expressions for ExtensionFilter
+    // Default file extensions
+    // Order of file extensions
+    // User defined file extensions
+    // 
+    // prompt text optional
+    // print options
+    //  page number
+    //  file name
+    //  date
+    //  ...
+    // 
     public TextArea getText() {
         return text;
     }
@@ -89,109 +142,87 @@ public class SimpleEditor extends Application
     // Todo
     // Document changes (as Asciidoc)
     // Generic set of file extensions
-    // Logging
-    // Font
-   // http://thierrywasyl.wordpress.com/2013/01/27/set-custom-font-in-javafx-2/
     // Icons
     // Properties
     @Override
     public void start(final Stage primaryStage) {
         this.primaryStage = primaryStage;
+        Logger.getLogger("").setLevel(Level.WARNING);
+        logger.log(Level.WARNING, "\n\nSimple Editor");
+
         File defaultDirectory = new File(".");
         try {
-           // This is a workaround. Apparently using "." directly does not work
+            // This is a workaround. Apparently using "." directly does not work
             initialDirectory = new File(initialDirectory.getCanonicalPath());
         } catch (IOException ex) {
-    Logger.getLogger(SimpleEditor.class.getName()).log(Level.SEVERE, null, ex);
+            logger.log(Level.WARNING, "Could not open default directory");
         }
 
-        // Setup TextArea
-        setUpTextArea();
-        // Setup Menus
-        MenuBar menuBar = getMenuBar(primaryStage);
-        // Setup Status bar
-        Pane statusPane = setUpStatusBar();
-
         BorderPane root = new BorderPane();
-        root.setTop(menuBar);
-        root.setCenter(text);
-        root.setBottom(statusPane);
+        // Setup Menus
+        root.setTop(getMenuBar(primaryStage));
+        // Setup TextArea        
+        root.setCenter(getTextArea());
+        // Setup Status bar
+        root.setBottom(getStatusBar());
 
-        Scene scene = new Scene(root, 600, 250);
-        primaryStage.setTitle("Simple Editor");
+//        appCtrl = (Initializable) this..getController();
+
+        Scene scene = new Scene(root, initialApplicationWidth, initialApplicationHeight);
+        primaryStage.setTitle(applicationTitle);
         primaryStage.setScene(scene);
         primaryStage.show();
 
-System.out.println("classpath is: " + System.getProperty("java.class.path"));
-InputStream url = getClass().getResourceAsStream(
-        "Simple Editor/resources/Information.PNG");
-System.out.println("url: " + url);
-url = getClass().getResourceAsStream("/resources/Information.PNG");
-System.out.println("url: " + url);
-url = getClass().getResourceAsStream("resources/Information.PNG");
-System.out.println("url: " + url);
-url = getClass().getResourceAsStream("/Information.PNG");
-System.out.println("url: " + url);
-url = getClass().getResourceAsStream(
-        "C:\\Tarleton\\CS330\\Simple Editor\\src\\resources\\Information.PNG");
+        // Used to handle the program termination event
+        // It will prevent the application from closing if necessary
+        // See:
+        // http://stackoverflow.com/questions/13727314/prevent-or-cancel-exit-javafx-2
+        // For discussion of using FXMLLoader
+        scene.getWindow().setOnCloseRequest(new EventHandler<WindowEvent>() {
+            @Override
+            public void handle(WindowEvent ev) {
+                ev.consume();
+                handleSaveAction(
+                        new SaveAndExitEventHandler(),
+                        new DontSaveAndExitEventHandler(),
+                        new CancelEventHandler(),
+                        new DontSaveAndExitEventHandler(),
+                        false);
+            }
+        });
+
+        // Set cursor
+        text.positionCaret(text.getText().length());
+        // This eliminates the prompt text
+        text.requestFocus();
+
+        System.out.println("classpath is: " + System.getProperty("java.class.path"));
+        InputStream url = getClass().getResourceAsStream(
+                "Simple Editor/resources/Information.PNG");
+        System.out.println("url: " + url);
+        url = getClass().getResourceAsStream("/resources/Information.PNG");
+        System.out.println("url: " + url);
+        url = getClass().getResourceAsStream("resources/Information.PNG");
+        System.out.println("url: " + url);
+        url = getClass().getResourceAsStream("/Information.PNG");
+        System.out.println("url: " + url);
+        url = getClass().getResourceAsStream(
+                "C:\\Tarleton\\CS330\\Simple Editor\\src\\resources\\Information.PNG");
         System.out.println("url: " + url);
 
         Image img = new Image(
- "file:\\C:\\Tarleton\\CS330\\Simple Editor\\src\\resources\\Information.PNG");
+                "file:\\C:\\Tarleton\\CS330\\Simple Editor\\src\\resources\\Information.PNG");
     }
 
     @Override
     public void stop() {
-        // Prompt to save fiel before exit
-        handleExit(true);
+        // Should never be called because of:
+        //  scene.getWindow().setOnCloseRequest(new EventHandler<WindowEvent>()
+        // Prompt to save file before exit
+//        handleExit(true);
     }
 
-    private void handleExit(boolean programTerminating) {
-        if (textModified) {
-            String fileName;
-            if (currentFile == null) {
-                fileName = "this text";
-            } else {
-                fileName = currentFile.getName();
-            }
-            ExitDialogBox exitDialogBox = new ExitDialogBox(
-                primaryStage, applicationTitle, fileName, !programTerminating);
-
-            ReturnValue returnValue = exitDialogBox.showDialog();
-
-            switch (returnValue) {
-                case Save:
-                    handleSave();
-                    break;
-                case DontSave:
-                    System.exit(0);
-                    break;
-                case Cancel:
-                    break;
-            }
-        }
-    }
-
-    private void handleSave() {
-        FileChooser fileChooser = new FileChooser();
-//        displayFileInformation(initialDirectory);
-        fileChooser.setInitialDirectory(initialDirectory);
-
-        //Set extension filter
-        FileChooser.ExtensionFilter extFilter = 
-                new FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt");
-        fileChooser.getExtensionFilters().add(extFilter);
-
-        //Show save file dialog
-        File file = fileChooser.showSaveDialog(primaryStage);
-        if (file != null) {
-            writeFile(file, text.getText());
-            textModified = false;
-            currentFile = file;
-        }
-    }
-
-    private Pane setUpStatusBar() {
+    private Pane getStatusBar() {
         BorderPane gridPane = new BorderPane();
 
         FlowPane fileNamePane = new FlowPane();
@@ -213,27 +244,44 @@ url = getClass().getResourceAsStream(
     private void updateStatusBar() {
         getCurrentLineNumber();
         if (currentFile != null) {
-            fileNameLabel.setText("File: " + currentFile.getName());
+            fileNameLabel.setText(fileText + currentFile.getName());
         } else {
-            fileNameLabel.setText("");
+            fileNameLabel.setText("No current file");
         }
     }
 
-    private void setUpTextArea() {
+    private TextArea getTextArea() {
         // Setup TextArea
 //        String testString = "Sample Text String Text Text";
 //        text.setText(testString);
+        originalTextHashValue = "".hashCode();
         text.setPromptText("Edit ...");
         text.setWrapText(true);
         text.positionCaret(text.getText().length());
+
+        if (useStandardFont) {
+            // Use standard font
+            currentFontFamily = standardFontFamily;
+            currentFontSize = standardFontSize;
+            currentFontWeight = standardFontWeight;
+        } else {
+            // Use system default font
+
+            // Determine the default font for the system
+            Font systemFont = Font.getDefault();
+            defaultFontFamily = systemFont.getFamily();
+            defaultFontSize = systemFont.getSize();
+            defaultFontWeight = systemFont.getStyle(); //standardFontWeight;
+//        logger.log(Level.WARNING, "defaultFontFamily: " + defaultFontFamily);
+//        logger.log(Level.WARNING, "defaultFontSize: " + defaultFontSize);
+//        logger.log(Level.WARNING, "defaultFontWeight: " + defaultFontWeight);
+            // Set current font to default font
+            currentFontFamily = systemFont.getFamily();
+            currentFontSize = systemFont.getSize();
+            currentFontWeight = systemFont.getStyle();
+        }
+
         text.setStyle(getFontStyle());
-        text.textProperty().addListener(new ChangeListener<String>() {
-            @Override
-            public void changed(ObservableValue<? extends String> ov,
-                    String old_val, String new_val) {
-                textModified = true;
-            }
-        });
 
         text.caretPositionProperty().addListener(new ChangeListener<Number>() {
             @Override
@@ -243,14 +291,32 @@ url = getClass().getResourceAsStream(
                 updateStatusBar();
             }
         });
+
+        return text;
     }
 
     private MenuBar getMenuBar(final Stage primaryStage) {
-        boolean mnemonicsEnabled = false;
-
         MenuBar menuBar = new MenuBar();
 
         // Create File menu
+        Menu menuFile = createFileMenu(primaryStage);
+
+        // Create Edit Menu
+        Menu menuEdit = createEditMenu(primaryStage);
+
+        // Create Format menu
+        Menu menuFormat = createFormatMenu(primaryStage);
+
+        // Create Help menu
+        Menu menuHelp = createHelpMenu(primaryStage);
+
+        menuBar.getMenus().addAll(menuFile, menuEdit, menuFormat, menuHelp);
+        menuBar.setFocusTraversable(true);
+
+        return menuBar;
+    }
+
+    private Menu createFileMenu(final Stage primaryStage) {
         Menu menuFile = new Menu("_File");
         menuFile.setMnemonicParsing(mnemonicsEnabled);
         MenuItem menuNew = new MenuItem("_New");
@@ -274,63 +340,15 @@ url = getClass().getResourceAsStream(
                 new SeparatorMenuItem(), menuPageSetup, menuPrint,
                 new SeparatorMenuItem(), menuExit);
 
-        // Create Edit Menu
-        Menu menuEdit = createEditMenu(primaryStage);
-
-        // Create Format menu
-        Menu menuFormat = new Menu("F_ormat");
-        menuFormat.setMnemonicParsing(mnemonicsEnabled);
-
-        MenuItem menuWordWrap = new MenuItem("Word Wrap");
-        MenuItem menuFont = new MenuItem("Font...");
-
-        menuFormat.getItems().addAll(menuWordWrap, menuFont);
-
-        menuWordWrap.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent t) {
-                text.setWrapText(!text.isWrapText());
-            }
-        });
-
-        menuFont.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent t) {
-                FontDialogBox fdbox = new FontDialogBox();
-                Stage FDStage = fdbox.getFontDialogBox(primaryStage, text);
-                FDStage.show();
-                fdbox.fontFamilyProperty().addListener(new ChangeListener() {
-                    @Override
-                 public void changed(ObservableValue ov, Object t, Object t1) {
-                throw new UnsupportedOperationException("Not supported yet."); 
-               //To change body of generated methods, choose Tools | Templates.
-                    }
-                });
-            }
-        });
-
-        // Create Help menu
-        Menu menuHelp = new Menu("_Help");
-        menuHelp.setMnemonicParsing(mnemonicsEnabled);
-        MenuItem menuAbout = new MenuItem("About...");
-        menuHelp.getItems().addAll(menuAbout);
-
-
         menuNew.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent t) {
-                if (textModified) {
-                    menuSave.fire();
-                } else {
-                    text.setText("");
-                    currentFile = null;
-                    currentFontFamily = "Courier";
-                    currentFontSize = 12;
-                    currentFontWeight = "normal";
-                    textFillColor = "black";
-                    textBackgroundColor = "white";
-                    text.setStyle(getFontStyle());
-                }
+                handleSaveAction(
+                        new NewSaveEventHandler(),
+                        new NewDontSaveEventHandler(),
+                        new CancelEventHandler(),
+                        new NewEventHandler(),
+                        false);
             }
         });
 
@@ -347,20 +365,16 @@ url = getClass().getResourceAsStream(
                 FileChooser fileChooser = new FileChooser();
                 displayFileInformation(initialDirectory);
                 fileChooser.setInitialDirectory(initialDirectory);
-
-                //Set extension filter
-//                    FileChooser.ExtensionFilter extFilter = 
-//               new FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt");
-//                    fileChooser.getExtensionFilters().add(extFilter);
+                addFileExtensions(fileChooser);
 
                 //Show save file dialog
                 File file = fileChooser.showSaveDialog(primaryStage);
                 if (file != null) {
                     writeFile(file, text.getText());
-                    textModified = false;
+                    originalTextHashValue = text.getText().hashCode();
+                    currentFile = file;
+                    updateStatusBar();
                 }
-                currentFile = file;
-                updateStatusBar();
             }
         });
         menuOpen.setOnAction(new EventHandler<ActionEvent>() {
@@ -369,17 +383,15 @@ url = getClass().getResourceAsStream(
                 FileChooser fileChooser = new FileChooser();
                 fileChooser.setInitialDirectory(initialDirectory);
                 //Set extension filter
-                FileChooser.ExtensionFilter extFilter = 
-                        new FileChooser.ExtensionFilter(
-                        "TXT files (*.txt)", "*.txt");
-                fileChooser.getExtensionFilters().add(extFilter);
+                addFileExtensions(fileChooser);
 
                 //Show save file dialog
                 File file = fileChooser.showOpenDialog(primaryStage);
                 if (file != null) {
                     text.setText(readFile(file));
                     text.setStyle(getFontStyle());
-                    currentFile = file;
+                    currentFile = file;                    
+                    updateStatusBar();
                 }
             }
         });
@@ -395,12 +407,13 @@ url = getClass().getResourceAsStream(
         menuPrint.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent t) {
-                PrinterJob pj = PrinterJob.getPrinterJob();
-                if (pj.printDialog()) {
+                PrinterJob printerJob = PrinterJob.getPrinterJob();
+                if (printerJob.printDialog()) {
                     try {
-                        pj.print();
-                    } catch (PrinterException exc) {
-                        System.out.println(exc);
+                        printerJob.print();
+                    } catch (PrinterException ex) {
+                        System.out.println(ex);
+                        logger.log(Level.WARNING, ex.toString());
                     }
                 }
             }
@@ -409,34 +422,17 @@ url = getClass().getResourceAsStream(
         menuExit.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent t) {
-                handleExit(false);
-            }
-        });
-        menuAbout.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent t) {
-                final Stage dialogStage = new Stage();
-                // initOwner needed so that WINDOW_MODAL will work properly
-                dialogStage.initOwner(primaryStage);
-                dialogStage.initModality(Modality.WINDOW_MODAL);
-                VBox aboutVBox = new VBox();
-                Text applicationName = new Text("Simple Editor");
-                Text author = new Text("Dr. Richard Reese");
-                aboutVBox.getChildren().addAll(applicationName, author);
-                aboutVBox.setAlignment(Pos.CENTER);
-                aboutVBox.setPadding(new Insets(5));
-
-                Scene aboutScene = new Scene(aboutVBox, 300, 100);
-                dialogStage.setScene(aboutScene);
-                dialogStage.setTitle("About Simple Editor");
-                dialogStage.show();
+                handleSaveAction(
+                        new SaveAndExitEventHandler(),
+                        new DontSaveAndExitEventHandler(),
+                        new CancelEventHandler(),
+                        new DontSaveAndExitEventHandler(),
+                        false);
+//                handleExit(false);
             }
         });
 
-        menuBar.getMenus().addAll(menuFile, menuEdit, menuFormat, menuHelp);
-        menuBar.setFocusTraversable(true);
-
-        return menuBar;
+        return menuFile;
     }
 
     private Menu createEditMenu(final Stage primaryStage) {
@@ -470,15 +466,13 @@ url = getClass().getResourceAsStream(
         menuUndo.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent paramT) {
-                ((TextInputControlBehavior) ((TextInputControlSkin) 
-                        text.getSkin()).getBehavior()).callAction("Undo");
+                ((TextInputControlBehavior) ((TextInputControlSkin) text.getSkin()).getBehavior()).callAction("Undo");
             }
         });
         menuRedo.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent paramT) {
-                ((TextInputControlBehavior) ((TextInputControlSkin) 
-                        text.getSkin()).getBehavior()).callAction("Redo");
+                ((TextInputControlBehavior) ((TextInputControlSkin) text.getSkin()).getBehavior()).callAction("Redo");
             }
         });
 
@@ -528,24 +522,23 @@ url = getClass().getResourceAsStream(
             public void handle(ActionEvent e) {
                 try {
                     // Find                    
-                    URL location = 
-                         getClass().getResource("FXMLBasedFindDialogBox.fxml");
+                    URL location =
+                            getClass().getResource("FXMLBasedFindDialogBox.fxml");
                     FXMLLoader fxmlLoader = new FXMLLoader();
                     fxmlLoader.setLocation(location);
                     fxmlLoader.setBuilderFactory(new JavaFXBuilderFactory());
 
-                    Parent root = (
-                            Parent) fxmlLoader.load(location.openStream());
+                    Parent root = (Parent) fxmlLoader.load(location.openStream());
                     findDialogBoxController = fxmlLoader.getController();
                     findDialogBoxController.setTargetString(text);
 
                     Stage stage = new Stage();
-                    stage.setTitle("FXML Find ...");
+                    stage.setTitle(findDialogBoxTitle);
                     stage.setScene(new Scene(root));
                     stage.show();
                 } catch (IOException ex) {
                     Logger.getLogger(
-                   SimpleEditor.class.getName()).log(Level.SEVERE, null, ex);
+                            SimpleEditor.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         });
@@ -566,26 +559,26 @@ url = getClass().getResourceAsStream(
             public void handle(ActionEvent e) {
                 try {
                     // Find                    
-                    URL location = 
+                    URL location =
                             getClass().getResource("ReplaceDialogBox.fxml");
                     FXMLLoader fxmlLoader = new FXMLLoader();
                     fxmlLoader.setLocation(location);
                     fxmlLoader.setBuilderFactory(new JavaFXBuilderFactory());
 
-                    final Parent root = 
+                    final Parent root =
                             (Parent) fxmlLoader.load(location.openStream());
-                    final ReplaceDialogBoxController controller = 
+                    final ReplaceDialogBoxController controller =
                             fxmlLoader.getController();
                     controller.setTargetString(text);
 
                     Stage stage = new Stage();
-                    stage.setTitle("Replace");
+                    stage.setTitle(replaceDialogBoxTitle);
                     stage.setScene(new Scene(root));
                     stage.show();
 
                 } catch (IOException ex) {
                     Logger.getLogger(
-                    SimpleEditor.class.getName()).log(Level.SEVERE, null, ex);
+                            SimpleEditor.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         });
@@ -595,21 +588,21 @@ url = getClass().getResourceAsStream(
             public void handle(ActionEvent e) {
                 try {
                     // Find                    
-                   URL location = getClass().getResource("GoToDialogBox.fxml");
+                    URL location = getClass().getResource("GoToDialogBox.fxml");
                     FXMLLoader fxmlLoader = new FXMLLoader();
                     fxmlLoader.setLocation(location);
                     fxmlLoader.setBuilderFactory(new JavaFXBuilderFactory());
 
-                    final Parent root = 
+                    final Parent root =
                             (Parent) fxmlLoader.load(location.openStream());
-                    final GoToDialogBoxController controller = 
+                    final GoToDialogBoxController controller =
                             fxmlLoader.getController();
 
                     controller.lineNumber.addListener(new ChangeListener() {
                         @Override
                         public void changed(ObservableValue o, Object oldVal,
                                 Object newVal) {
-               // Requires good knowledge of String class - Quiz them first?
+                            // Requires good knowledge of String class - Quiz them first?
                             int num = ((Integer) newVal).intValue();
                             String target = text.getText();
                             if (num < 0 || num > target.length()) {
@@ -623,8 +616,8 @@ url = getClass().getResourceAsStream(
                                     for (int i = 0; i < target.length(); i++) {
                                         if (target.charAt(i) == '\n') {
                                             if (count == num) {
-                                               text.positionCaret(oldPosition);
-                                               return;
+                                                text.positionCaret(oldPosition);
+                                                return;
                                             } else {
                                                 count++;
                                                 oldPosition = i + 1;
@@ -634,8 +627,8 @@ url = getClass().getResourceAsStream(
                                         }
                                         if (i == target.length() - 1) {
                                             if (count == num) {
-                                               text.positionCaret(oldPosition);
-                                               return;
+                                                text.positionCaret(oldPosition);
+                                                return;
                                             }
                                         }
                                     }
@@ -651,7 +644,7 @@ url = getClass().getResourceAsStream(
                     stage.show();
                 } catch (IOException ex) {
                     Logger.getLogger(
-                     SimpleEditor.class.getName()).log(Level.SEVERE, null, ex);
+                            SimpleEditor.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         });
@@ -680,17 +673,100 @@ url = getClass().getResourceAsStream(
         });
 
         menuEdit.getItems().addAll(menuUndo, menuRedo,
-        new SeparatorMenuItem(), menuCut, menuCopy, menuPaste, menuDelete,
-        new SeparatorMenuItem(), menuFind, menuFindNext, menuReplace, menuGoTo,
-        new SeparatorMenuItem(), menuSelectAll, menuTimeDate);
+                new SeparatorMenuItem(), menuCut, menuCopy, menuPaste, menuDelete,
+                new SeparatorMenuItem(), menuFind, menuFindNext, menuReplace, menuGoTo,
+                new SeparatorMenuItem(), menuSelectAll, menuTimeDate);
 
         return menuEdit;
     }
 
-    @Override
-    public int print(Graphics g, PageFormat pf, int page)
-            throws PrinterException {
+    private Menu createFormatMenu(final Stage primaryStage) {
+        Menu menuFormat = new Menu("F_ormat");
+        menuFormat.setMnemonicParsing(mnemonicsEnabled);
 
+        MenuItem menuWordWrap = new MenuItem("Word Wrap");
+        MenuItem menuFont = new MenuItem("Font...");
+
+        menuFormat.getItems().addAll(menuWordWrap, menuFont);
+
+        menuWordWrap.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent t) {
+                text.setWrapText(!text.isWrapText());
+            }
+        });
+
+        menuFont.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent t) {
+                FontDialogBox fdbox = new FontDialogBox();
+                Stage FDStage = fdbox.getFontDialogBox(primaryStage, text);
+                FDStage.show();
+                fdbox.fontFamilyProperty().addListener(new ChangeListener() {
+                    @Override
+                    public void changed(ObservableValue ov, Object t, Object t1) {
+                        throw new UnsupportedOperationException("Not supported yet.");
+                        //To change body of generated methods, choose Tools | Templates.
+                    }
+                });
+            }
+        });
+        return menuFormat;
+    }
+
+    private Menu createHelpMenu(final Stage primaryStage) {
+        Menu menuHelp = new Menu("_Help");
+        menuHelp.setMnemonicParsing(mnemonicsEnabled);
+        MenuItem menuAbout = new MenuItem("About...");
+        menuHelp.getItems().addAll(menuAbout);
+
+        menuAbout.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent t) {
+                final Stage dialogStage = new Stage();
+                // initOwner needed so that WINDOW_MODAL will work properly
+                dialogStage.initOwner(primaryStage);
+                dialogStage.initModality(Modality.WINDOW_MODAL);
+                VBox aboutVBox = new VBox();
+                Text applicationName = new Text("Simple Editor");
+                Text author = new Text("Dr. Richard Reese");
+                aboutVBox.getChildren().addAll(applicationName, author);
+                aboutVBox.setAlignment(Pos.CENTER);
+                aboutVBox.setPadding(new Insets(5));
+
+                Scene aboutScene = new Scene(aboutVBox, 300, 100);
+                dialogStage.setScene(aboutScene);
+                dialogStage.setTitle("About Simple Editor");
+                dialogStage.show();
+            }
+        });
+        return menuHelp;
+
+    }
+
+    private void addFileExtensions(FileChooser fileChooser) {
+        FileChooser.ExtensionFilter allFileFilter =
+                new FileChooser.ExtensionFilter(
+                "All files (*.*)", "*.*");
+        FileChooser.ExtensionFilter textFileFilter =
+                new FileChooser.ExtensionFilter(
+                "TXT files (*.txt)", "*.txt");
+        FileChooser.ExtensionFilter javaFileFilter =
+                new FileChooser.ExtensionFilter(
+                "Java files (*.java, *.class)", "*.java", "*.class");
+        fileChooser.getExtensionFilters().addAll(
+                allFileFilter, textFileFilter, javaFileFilter);
+    }
+
+    private boolean textHasChanged() {
+        return !(originalTextHashValue == text.getText().hashCode());
+//        return !originalText.equals(text.getText());
+    }
+
+    @Override
+    public int print(Graphics g, PageFormat pf, int page){
+
+        try {
         // We have only one page, and 'page'
         // is zero-based
         if (page > 0) {
@@ -709,6 +785,9 @@ url = getClass().getResourceAsStream(
 
         // tell the caller that this page is part
         // of the printed document
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
         return Printable.PAGE_EXISTS;
     }
 
@@ -754,17 +833,15 @@ url = getClass().getResourceAsStream(
                 stringBuffer.append(text + "\n");
             }
         } catch (FileNotFoundException ex) {
-//Logger.getLogger(
-//            JavaFX_OpenFile.class.getName()).log(Level.SEVERE, null, ex);
+            logger.log(Level.WARNING, "File not found");
         } catch (IOException ex) {
-//Logger.getLogger(
-//            JavaFX_OpenFile.class.getName()).log(Level.SEVERE, null, ex);
+            logger.log(Level.WARNING, "IOException in readFile");
         } finally {
             try {
                 bufferedReader.close();
             } catch (IOException ex) {
-//Logger.getLogger(
-//            JavaFX_OpenFile.class.getName()).log(Level.SEVERE, null, ex);
+                logger.log(Level.WARNING,
+                        "Failed to close bufferedReader in readFile");
             }
         }
 
@@ -778,17 +855,15 @@ url = getClass().getResourceAsStream(
             bufferedWriter = new BufferedWriter(new FileWriter(file));
             bufferedWriter.write(data);
         } catch (FileNotFoundException ex) {
-//Logger.getLogger(
-//            JavaFX_OpenFile.class.getName()).log(Level.SEVERE, null, ex);
+            logger.log(Level.WARNING, "File not found in writeFile");
         } catch (IOException ex) {
-//Logger.getLogger(
-//            JavaFX_OpenFile.class.getName()).log(Level.SEVERE, null, ex);
+            logger.log(Level.WARNING, "IO exception in writeFile");
         } finally {
             try {
                 bufferedWriter.close();
             } catch (IOException ex) {
-//Logger.getLogger(
-//                JavaFX_OpenFile.class.getName()).log(Level.SEVERE, null, ex);
+                logger.log(Level.WARNING,
+                        "Could not close exception in writeFile");
             }
         }
 
@@ -802,6 +877,146 @@ url = getClass().getResourceAsStream(
                 + "-fx-font-family: " + currentFontFamily + ";"
                 + "-fx-font-size: " + currentFontSize + ";"
                 + "-fx-font-weight: " + currentFontWeight;
+    }
+
+    // ActionEvent handlers
+    private void handleSaveAction(
+            EventHandler<ActionEvent> saveAction,
+            EventHandler<ActionEvent> dontSaveAction,
+            EventHandler<ActionEvent> cancelAction,
+            EventHandler<ActionEvent> defaultAction,
+            boolean programTerminating) {
+
+        if (textHasChanged()) {
+            String fileName;
+            if (currentFile == null) {
+                fileName = "this text";
+            } else {
+                fileName = currentFile.getName();
+            }
+            ExitDialogBox exitDialogBox = new ExitDialogBox(
+                    primaryStage, applicationTitle, fileName, !programTerminating);
+
+            ReturnValue returnValue = exitDialogBox.showDialog();
+
+            switch (returnValue) {
+                case Save:
+                    saveAction.handle(null);
+                    break;
+                case DontSave:
+                    dontSaveAction.handle(null);
+                    break;
+                case Cancel:
+                    cancelAction.handle(null);
+                    break;
+            }
+        } else {
+            defaultAction.handle(null);
+        }
+    }
+
+    private void handleSave() {
+        FileChooser fileChooser = new FileChooser();
+//        displayFileInformation(initialDirectory);
+        fileChooser.setInitialDirectory(initialDirectory);
+        addFileExtensions(fileChooser);
+
+        //Show save file dialog
+        File file = fileChooser.showSaveDialog(primaryStage);
+        if (file != null) {
+            writeFile(file, text.getText());
+            originalTextHashValue = text.getText().hashCode();
+            currentFile = file;
+            updateStatusBar();
+        }
+    }
+
+    private class SaveEventHandler implements EventHandler<ActionEvent> {
+
+        @Override
+        public void handle(ActionEvent t) {
+            handleSave();
+            updateStatusBar();
+        }
+    }
+
+    private class DontSaveEventHandler implements EventHandler<ActionEvent> {
+
+        @Override
+        public void handle(ActionEvent t) {
+            // Do nothing
+        }
+    }
+
+    private class SaveAndExitEventHandler implements EventHandler<ActionEvent> {
+
+        @Override
+        public void handle(ActionEvent t) {
+            handleSave();
+            System.exit(0);
+        }
+    }
+
+    private class DontSaveAndExitEventHandler implements EventHandler<ActionEvent> {
+
+        @Override
+        public void handle(ActionEvent t) {
+            System.exit(0);
+        }
+    }
+
+    private class CancelEventHandler implements EventHandler<ActionEvent> {
+
+        @Override
+        public void handle(ActionEvent t) {
+            // Do nothing
+        }
+    }
+
+    private class NewSaveEventHandler implements EventHandler<ActionEvent> {
+
+        @Override
+        public void handle(ActionEvent t) {
+            handleSave();
+            clearText();
+            updateStatusBar();
+        }
+    }
+
+    private class NewDontSaveEventHandler implements EventHandler<ActionEvent> {
+
+        @Override
+        public void handle(ActionEvent t) {
+            clearText();
+        }
+    }
+
+    private class NewEventHandler implements EventHandler<ActionEvent> {
+
+        @Override
+        public void handle(ActionEvent t) {
+            clearText();
+        }
+    }
+
+    private void clearText() {
+        text.setText("");
+        currentFile = null;
+        textFillColor = "black";
+        textBackgroundColor = "white";
+
+        if (useStandardFont) {
+            // Use standard font
+            currentFontFamily = standardFontFamily;
+            currentFontSize = standardFontSize;
+            currentFontWeight = standardFontWeight;
+        } else {
+            // Set current font to default font
+            currentFontFamily = defaultFontFamily;
+            currentFontSize = defaultFontSize;
+            currentFontWeight = defaultFontWeight;
+        }
+        text.setStyle(getFontStyle());
     }
 
     public static void main(String[] args) {
