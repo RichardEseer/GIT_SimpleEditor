@@ -142,6 +142,7 @@ url = getClass().getResourceAsStream(
 
     @Override
     public void stop() {
+        // Prompt to save fiel before exit
         handleExit(true);
     }
 
